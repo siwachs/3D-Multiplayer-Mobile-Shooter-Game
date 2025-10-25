@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { OrbitControls, Environment } from "@react-three/drei";
-import { insertCoin, Joystick, onPlayerJoin } from "playroomkit";
+import { insertCoin, Joystick, myPlayer, onPlayerJoin } from "playroomkit";
 
 import BattleGround from "./BattleGround";
+import CharacterController from "./CharacterController";
 
 import type { Player } from "../types";
 
@@ -55,6 +56,15 @@ export const Experience = () => {
       />
       <OrbitControls />
       <BattleGround />
+      {players.map(({ state, joystick }, idx) => (
+        <CharacterController
+          key={state.id}
+          position-x={idx * 2}
+          state={state}
+          joystick={joystick}
+          userPlayer={state.id === myPlayer()?.id}
+        />
+      ))}
       <Environment preset="sunset" />
     </>
   );

@@ -165,6 +165,11 @@
     "@babel/helper-string-parser" "^7.27.1"
     "@babel/helper-validator-identifier" "^7.28.5"
 
+"@dimforge/rapier3d-compat@0.15.0":
+  version "0.15.0"
+  resolved "https://registry.yarnpkg.com/@dimforge/rapier3d-compat/-/rapier3d-compat-0.15.0.tgz#53fc00c2655d12baf723ecc9ca9e972e412c2800"
+  integrity sha512-TRH9rmF6RJqvKt0xis6VkToJHz4Pf54IfYhKGWn7zkpTWPwVyQ4p9kjwrdm6jOfGn72MBrIbttzvDB/ZOqE7sg==
+
 "@dimforge/rapier3d-compat@~0.12.0":
   version "0.12.0"
   resolved "https://registry.yarnpkg.com/@dimforge/rapier3d-compat/-/rapier3d-compat-0.12.0.tgz#7b3365e1dfdc5cd957b45afe920b4ac06c7cd389"
@@ -483,6 +488,15 @@
     scheduler "^0.21.0"
     suspend-react "^0.1.3"
     zustand "^3.7.1"
+
+"@react-three/rapier@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@react-three/rapier/-/rapier-2.1.0.tgz#a184bd0edfed0a718fd2fc8e6f27983fa1076934"
+  integrity sha512-o1VzgCEILnc4noF4t5WNPYCy6dh0bTcd0Fa/xZa5/LBDnjYMb2mlWX6f+wMck5ucdz2BsVV+tpYWTGvb72QRIA==
+  dependencies:
+    "@dimforge/rapier3d-compat" "0.15.0"
+    suspend-react "^0.1.3"
+    three-stdlib "^2.35.12"
 
 "@rolldown/pluginutils@1.0.0-beta.43":
   version "1.0.0-beta.43"
@@ -1486,7 +1500,7 @@ three-mesh-bvh@^0.6.7:
   resolved "https://registry.yarnpkg.com/three-mesh-bvh/-/three-mesh-bvh-0.6.8.tgz#f27d18ca75bdc59316dff0f561af8fb316621a54"
   integrity sha512-EGebF9DZx1S8+7OZYNNTT80GXJZVf+UYXD/HyTg/e2kR/ApofIFfUS4ZzIHNnUVIadpnLSzM4n96wX+l7GMbnQ==
 
-three-stdlib@^2.28.0, three-stdlib@^2.36.0:
+three-stdlib@^2.28.0, three-stdlib@^2.35.12, three-stdlib@^2.36.0:
   version "2.36.0"
   resolved "https://registry.yarnpkg.com/three-stdlib/-/three-stdlib-2.36.0.tgz#1d806b8db9156a6c87ed10f61f56f8a3ab634b42"
   integrity sha512-kv0Byb++AXztEGsULgMAs8U2jgUdz6HPpAB/wDJnLiLlaWQX2APHhiTJIN7rqW+Of0eRgcp7jn05U1BsCP3xBA==
