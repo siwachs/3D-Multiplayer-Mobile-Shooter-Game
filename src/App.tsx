@@ -11,7 +11,7 @@ function App() {
       <color attach="background" args={["#242424"]} />
       <SoftShadows size={42} />
       <Suspense>
-        <Physics>
+        <Physics debug>
           <Experience />
         </Physics>
       </Suspense>

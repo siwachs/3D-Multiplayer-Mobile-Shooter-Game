@@ -66,7 +66,7 @@ const WEAPONS = [
 // GLTF to jsx -> https://gltf.pmnd.rs
 export default function Soldier({
   color = "black",
-  animation = "Ideal",
+  animation = "Idle",
   weapon = "AK",
   ...props
 }: Readonly<{ color?: string; animation?: string; weapon?: string }>) {
