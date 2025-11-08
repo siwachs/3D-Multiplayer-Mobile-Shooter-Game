@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { OrbitControls, Environment } from "@react-three/drei";
+import { Environment } from "@react-three/drei";
 import { insertCoin, Joystick, myPlayer, onPlayerJoin } from "playroomkit";
 
 import BattleGround from "./BattleGround";
@@ -54,7 +54,6 @@ export const Experience = () => {
         shadow-mapSize-height={4096}
         shadow-bias={-0.0001}
       />
-      <OrbitControls />
       <BattleGround />
       {players.map(({ state, joystick }, idx) => (
         <CharacterController
