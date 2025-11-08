@@ -10,9 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "0.11.2",
     "@react-three/drei": "9.88.11",
     "@react-three/fiber": "8.15.10",
-    "@react-three/rapier": "^2.1.0",
+    "@react-three/rapier": "^1.1.1",
     "playroomkit": "^0.0.91",
     "react": "18.2.0",
     "react-dom": "18.2.0",
