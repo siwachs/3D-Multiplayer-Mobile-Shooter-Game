@@ -25,7 +25,7 @@ function App() {
 
         <PerformanceMonitor
           // Detect low performance devices
-          onDecline={(fps) => {
+          onDecline={(_) => {
             setDowngradedPerformance(true);
           }}
         />
