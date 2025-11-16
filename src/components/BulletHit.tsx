@@ -42,7 +42,7 @@ export const BulletHit: React.FC<{
           MathUtils.randFloat(-0.6, 0.6),
           MathUtils.randFloat(-0.6, 0.6)
         ),
-        scale: 0.1,
+        scale: 0.1, //MathUtils.randFloat(0.03, 0.09),
         speed: MathUtils.randFloat(0.1, 0.3),
       })),
     [nb]

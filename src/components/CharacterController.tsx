@@ -18,7 +18,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Soldier } from "./characters";
 
 import type { BodyUserData } from "../types";
-import type { Group } from "three";
+import type { Group, DirectionalLight } from "three";
 
 interface ControllerProps {
   state: any;
@@ -26,10 +26,11 @@ interface ControllerProps {
   userPlayer: boolean;
   onFire: (newBullet: Record<string, any>) => void;
   onKilled: (_victim: number, killer: number) => void;
+  downgradedPerformance: boolean;
   [key: string]: any;
 }
 
-const MOVEMENT_SPEED = 200;
+const MOVEMENT_SPEED = 202;
 const FIRE_RATE = 380;
 export const WEAPON_OFFSET = {
   x: -0.2,
@@ -43,14 +44,17 @@ const CharacterController: React.FC<ControllerProps> = ({
   userPlayer,
   onFire,
   onKilled,
+  downgradedPerformance,
 
   ...props
 }) => {
   const [animation, setAnimation] = useState("Ideal");
+  const [weapon, _] = useState("AK");
 
   const group = useRef<Group>(null!);
   const character = useRef<Group>(null!);
   const rigidBodyRef = useRef<RapierRigidBody>(null!);
+  const directionalLightRef = useRef<DirectionalLight>(null!);
 
   const controlsRef = useRef<CameraControlsType>(null!);
   const lastShootRef = useRef(0);
@@ -77,13 +81,29 @@ const CharacterController: React.FC<ControllerProps> = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (state.state.dead) {
+      const audio = new Audio("/audios/dead.mp3");
+      audio.volume = 0.5;
+      audio.play();
+    }
+  }, [state.state.dead]);
+
+  useEffect(() => {
+    if (state.state.health < 100) {
+      const audio = new Audio("/audios/hurt.mp3");
+      audio.volume = 0.4;
+      audio.play();
+    }
+  }, [state.state.health]);
+
   useFrame((_, delta) => {
     // Camera Follow Character
     if (controlsRef.current) {
       const cameraDistanceY = window.innerWidth < 1024 ? 16 : 20;
       const cameraDistanceZ = window.innerWidth < 1024 ? 12 : 16;
 
-      // Conver rapier physics to threeJS physics
+      // Convert rapier physics to threeJS physics
       const playerWorldPos = vec3(rigidBodyRef.current?.translation());
       controlsRef.current.setLookAt(
         playerWorldPos.x,
@@ -101,6 +121,7 @@ const CharacterController: React.FC<ControllerProps> = ({
       return;
     }
 
+    // Update player position based on joystick state
     const angle = joystick.angle();
     if (joystick.isJoystickPressed() && angle) {
       setAnimation("Run");
@@ -118,18 +139,11 @@ const CharacterController: React.FC<ControllerProps> = ({
       setAnimation("Idle");
     }
 
-    if (isHost() && rigidBodyRef.current) {
-      state.setState("pos", rigidBodyRef.current.translation());
-    } else {
-      const pos = state.getState("pos");
-      if (pos) {
-        rigidBodyRef.current?.setTranslation(pos, true);
-      }
-    }
-
     // Fire Func.
     if (joystick.isPressed("fire")) {
-      setAnimation("Idle_Shoot");
+      setAnimation(
+        joystick.isJoystickPressed() && angle ? "Run_Shoot" : "Idle_Shoot"
+      );
 
       if (isHost()) {
         if (Date.now() - lastShootRef.current > FIRE_RATE) {
@@ -146,7 +160,22 @@ const CharacterController: React.FC<ControllerProps> = ({
         }
       }
     }
+
+    if (isHost()) {
+      state.setState("pos", rigidBodyRef.current?.translation());
+    } else {
+      const pos = state.getState("pos");
+      if (pos) {
+        rigidBodyRef.current?.setTranslation(pos, true);
+      }
+    }
   });
+
+  useEffect(() => {
+    if (character.current && userPlayer) {
+      directionalLightRef.current.target = character.current;
+    }
+  }, [character.current]);
 
   return (
     <group ref={group} {...props}>
@@ -161,11 +190,11 @@ const CharacterController: React.FC<ControllerProps> = ({
         type={isHost() ? "dynamic" : "kinematicPosition"} // Physics simulation is not deterministic across clients — each device runs its own version of the world
         onIntersectionEnter={(e) => {
           // On Collide Handler
-          const other = e.other.rigidBodyObject?.userData as BodyUserData;
+          const other = e.other.rigidBody?.userData as BodyUserData;
 
           if (isHost() && other.type === "bullet" && state.state.health > 0) {
             const newHealth = state.state.health - other.damage;
-            if (newHealth < 0) {
+            if (newHealth <= 0) {
               setState("deaths", state.state.deaths + 1);
               setState("dead", true);
               setState("health", 0);
@@ -178,7 +207,7 @@ const CharacterController: React.FC<ControllerProps> = ({
                 setState("dead", false);
               }, 2000);
 
-              onKilled(state.id, other.player);
+              onKilled(state.id, other.userData.player);
             } else {
               setState("health", newHealth);
             }
@@ -187,13 +216,36 @@ const CharacterController: React.FC<ControllerProps> = ({
       >
         <PlayerInfo state={state.state} />
         <group ref={character}>
-          <Soldier color={state.state.profile?.color} animation={animation} />
+          <Soldier
+            color={state.state.profile?.color}
+            animation={animation}
+            weapon={weapon}
+          />
           {userPlayer && (
             <Crosshair
               position={[WEAPON_OFFSET.x, WEAPON_OFFSET.y, WEAPON_OFFSET.z]}
             />
           )}
         </group>
+
+        {userPlayer && (
+          <directionalLight
+            ref={directionalLightRef}
+            position={[25, 18, -25]}
+            intensity={0.3}
+            castShadow={!downgradedPerformance} // Disable shadows on low-end devices
+            shadow-camera-near={0}
+            shadow-camera-far={100}
+            shadow-camera-left={-20}
+            shadow-camera-right={20}
+            shadow-camera-top={20}
+            shadow-camera-bottom={-20}
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-bias={-0.0001}
+          />
+        )}
+
         <CapsuleCollider args={[0.7, 0.6]} position={[0, 1.28, 0]} />
       </RigidBody>
     </group>

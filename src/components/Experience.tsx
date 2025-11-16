@@ -16,7 +16,9 @@ import { BulletHit } from "./BulletHit";
 
 import type { Player, Position } from "../types";
 
-export const Experience = () => {
+export const Experience: React.FC<{
+  downgradedPerformance?: boolean;
+}> = ({ downgradedPerformance = false }) => {
   const [players, setPlayers] = useState<Player[]>([]);
 
   const [bullets, setBullets] = useState<Record<string, any>[]>([]);
@@ -39,12 +41,6 @@ export const Experience = () => {
 
   const start = async () => {
     await insertCoin();
-  };
-
-  console.log(networkBullets);
-
-  useEffect(() => {
-    start();
 
     const setUpPlayer = (state: Player["state"]) => {
       const joystick = new Joystick(state, {
@@ -65,10 +61,10 @@ export const Experience = () => {
     };
 
     onPlayerJoin((state) => setUpPlayer(state));
+  };
 
-    return () => {
-      setPlayers([]);
-    };
+  useEffect(() => {
+    start();
   }, []);
 
   const onFire = (bullet: Record<string, any>) => {
@@ -82,7 +78,6 @@ export const Experience = () => {
 
   const onHit = (bulletId: string, position?: Position) => {
     setBullets((bullets) => bullets.filter((bullet) => bullet.id !== bulletId));
-    console.log("on hit");
     setHits((hits) => [...hits, { id: bulletId, position }]);
   };
 
@@ -92,7 +87,7 @@ export const Experience = () => {
 
   return (
     <>
-      <directionalLight
+      {/* <directionalLight
         position={[25, 18, -25]}
         intensity={0.3}
         castShadow
@@ -105,7 +100,7 @@ export const Experience = () => {
         shadow-mapSize-width={4096}
         shadow-mapSize-height={4096}
         shadow-bias={-0.0001}
-      />
+      /> */}
       <BattleGround />
       {players.map(({ state, joystick }) => (
         <CharacterController
@@ -115,6 +110,7 @@ export const Experience = () => {
           userPlayer={state.id === myPlayer()?.id}
           onFire={onFire}
           onKilled={onKilled}
+          downgradedPerformance={downgradedPerformance}
         />
       ))}
 

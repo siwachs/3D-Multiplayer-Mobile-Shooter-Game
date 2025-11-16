@@ -22,6 +22,10 @@ const Bullet: React.FC<{
   const rigidBodyRef = useRef<RapierRigidBody>(null!);
 
   useEffect(() => {
+    const audio = new Audio("/audios/rifle.mp3");
+    audio.volume = 0.5;
+    audio.play();
+
     const velocity = {
       x: Math.sin(angle) * BULLET_SPEED,
       y: 0,
@@ -29,9 +33,6 @@ const Bullet: React.FC<{
     };
 
     rigidBodyRef.current?.setLinvel(velocity, true);
-
-    const audio = new Audio("/audios/rifle.mp3");
-    audio.play();
   }, []);
 
   return (
@@ -48,7 +49,7 @@ const Bullet: React.FC<{
           sensor // Notify when it collide
           onIntersectionEnter={(e) => {
             // On Collide Handler
-            const other = e.other.rigidBodyObject?.userData as BodyUserData;
+            const other = e.other.rigidBody?.userData as BodyUserData;
 
             if (isHost() && other.type !== "bullet") {
               rigidBodyRef.current.setEnabled(false);
