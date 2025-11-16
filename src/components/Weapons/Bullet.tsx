@@ -20,6 +20,7 @@ const Bullet: React.FC<{
   onHit: (position: Vector3) => void;
 }> = ({ player, angle, position, onHit }) => {
   const rigidBodyRef = useRef<RapierRigidBody>(null!);
+  const hasHitRef = useRef(false); // Add this to track if bullet has already hit
 
   useEffect(() => {
     const audio = new Audio("/audios/rifle.mp3");
@@ -51,7 +52,9 @@ const Bullet: React.FC<{
             // On Collide Handler
             const other = e.other.rigidBodyObject?.userData as BodyUserData;
 
-            if (isHost() && other.type !== "bullet") {
+            // Prevent multiple hits - only process if not already hit
+            if (isHost() && other.type !== "bullet" && !hasHitRef.current) {
+              hasHitRef.current = true; // Mark as hit
               rigidBodyRef.current.setEnabled(false);
               onHit(vec3(rigidBodyRef.current?.translation()));
             }

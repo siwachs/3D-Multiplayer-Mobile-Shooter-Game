@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Joystick, isHost, setState } from "playroomkit";
+import { Joystick, isHost } from "playroomkit";
 import {
   Billboard,
   Text,
@@ -193,28 +193,28 @@ const CharacterController: React.FC<ControllerProps> = ({
           const other = e.other.rigidBodyObject?.userData as BodyUserData;
           console.log("other is", other);
 
-          if (isHost() && other.type === "bullet" && state.state.health > 0) {
+          if (isHost() && other?.type === "bullet" && state.state.health > 0) {
             if (other.player === state.id) {
               return;
             }
 
             const newHealth = state.state.health - other.damage;
             if (newHealth <= 0) {
-              setState("deaths", state.state.deaths + 1);
-              setState("dead", true);
-              setState("health", 0);
+              state.setState("deaths", state.state.deaths + 1);
+              state.setState("dead", true);
+              state.setState("health", 0);
               rigidBodyRef.current.setEnabled(false);
 
               setTimeout(() => {
                 spawnRandomly();
                 rigidBodyRef.current.setEnabled(true);
-                setState("health", 100);
-                setState("dead", false);
+                state.setState("health", 100);
+                state.setState("dead", false);
               }, 2000);
 
               onKilled(state.id, other.player);
             } else {
-              setState("health", newHealth);
+              state.setState("health", newHealth);
             }
           }
         }}
