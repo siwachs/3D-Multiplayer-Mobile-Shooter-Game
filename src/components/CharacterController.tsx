@@ -1,7 +1,9 @@
-import { useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
-import { Joystick, isHost } from "playroomkit";
+import { useEffect, useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { Joystick, isHost, setState } from "playroomkit";
 import {
+  Billboard,
+  Text,
   CameraControls,
   type CameraControls as CameraControlsType,
 } from "@react-three/drei";
@@ -11,31 +13,69 @@ import {
   vec3,
   type RapierRigidBody,
 } from "@react-three/rapier";
+import { v4 as uuidv4 } from "uuid";
 
 import { Soldier } from "./characters";
 
+import type { BodyUserData } from "../types";
 import type { Group } from "three";
 
 interface ControllerProps {
   state: any;
   joystick: Joystick;
   userPlayer: boolean;
+  onFire: (newBullet: Record<string, any>) => void;
+  onKilled: (_victim: number, killer: number) => void;
   [key: string]: any;
 }
 
 const MOVEMENT_SPEED = 200;
+const FIRE_RATE = 380;
+export const WEAPON_OFFSET = {
+  x: -0.2,
+  y: 1.4,
+  z: 0.8,
+};
 
 const CharacterController: React.FC<ControllerProps> = ({
   state,
   joystick,
   userPlayer,
+  onFire,
+  onKilled,
+
   ...props
 }) => {
   const [animation, setAnimation] = useState("Ideal");
+
   const group = useRef<Group>(null!);
   const character = useRef<Group>(null!);
-  const controlsRef = useRef<CameraControlsType>(null!);
   const rigidBodyRef = useRef<RapierRigidBody>(null!);
+
+  const controlsRef = useRef<CameraControlsType>(null!);
+  const lastShootRef = useRef(0);
+
+  const scene = useThree((state) => state.scene);
+  const spawnRandomly = () => {
+    const spawns = [];
+    for (let i = 0; i < 1000; i++) {
+      const spawn = scene.getObjectByName(`spawn_${i}`);
+      if (spawn) {
+        spawns.push(spawn);
+      } else {
+        break;
+      }
+    }
+
+    const spawnPos = spawns[Math.floor(Math.random() * spawns.length)].position;
+    rigidBodyRef.current?.setTranslation(spawnPos, true);
+  };
+
+  useEffect(() => {
+    if (isHost()) {
+      spawnRandomly();
+    }
+  }, []);
 
   useFrame((_, delta) => {
     // Camera Follow Character
@@ -54,6 +94,11 @@ const CharacterController: React.FC<ControllerProps> = ({
         playerWorldPos.z,
         true
       );
+    }
+
+    if (state.state.dead) {
+      setAnimation("Death");
+      return;
     }
 
     const angle = joystick.angle();
@@ -81,6 +126,26 @@ const CharacterController: React.FC<ControllerProps> = ({
         rigidBodyRef.current?.setTranslation(pos, true);
       }
     }
+
+    // Fire Func.
+    if (joystick.isPressed("fire")) {
+      setAnimation("Idle_Shoot");
+
+      if (isHost()) {
+        if (Date.now() - lastShootRef.current > FIRE_RATE) {
+          lastShootRef.current = Date.now();
+
+          const newBullet = {
+            id: `${state.id}-${uuidv4()}`,
+            position: vec3(rigidBodyRef.current?.translation()),
+            angle,
+            player: state.id,
+          };
+
+          onFire(newBullet);
+        }
+      }
+    }
   });
 
   return (
@@ -94,13 +159,103 @@ const CharacterController: React.FC<ControllerProps> = ({
         linearDamping={12} // Friction
         lockRotations
         type={isHost() ? "dynamic" : "kinematicPosition"} // Physics simulation is not deterministic across clients — each device runs its own version of the world
+        onIntersectionEnter={(e) => {
+          // On Collide Handler
+          const other = e.other.rigidBodyObject?.userData as BodyUserData;
+
+          if (isHost() && other.type === "bullet" && state.state.health > 0) {
+            const newHealth = state.state.health - other.damage;
+            if (newHealth < 0) {
+              setState("deaths", state.state.deaths + 1);
+              setState("dead", true);
+              setState("health", 0);
+              rigidBodyRef.current.setEnabled(false);
+
+              setTimeout(() => {
+                spawnRandomly();
+                rigidBodyRef.current.setEnabled(true);
+                setState("health", 100);
+                setState("dead", false);
+              }, 2000);
+
+              onKilled(state.id, other.player);
+            } else {
+              setState("health", newHealth);
+            }
+          }
+        }}
       >
+        <PlayerInfo state={state.state} />
         <group ref={character}>
           <Soldier color={state.state.profile?.color} animation={animation} />
+          {userPlayer && (
+            <Crosshair
+              position={[WEAPON_OFFSET.x, WEAPON_OFFSET.y, WEAPON_OFFSET.z]}
+            />
+          )}
         </group>
         <CapsuleCollider args={[0.7, 0.6]} position={[0, 1.28, 0]} />
       </RigidBody>
     </group>
+  );
+};
+
+const Crosshair: React.FC<
+  { position: [number, number, number] } & Record<string, any>
+> = ({ position, ...props }) => {
+  return (
+    <group position={position} {...props}>
+      <mesh position-z={1}>
+        <boxGeometry args={[0.05, 0.05, 0.05]} />
+        <meshBasicMaterial color="black" transparent opacity={0.9} />
+      </mesh>
+      <mesh position-z={2}>
+        <boxGeometry args={[0.05, 0.05, 0.05]} />
+        <meshBasicMaterial color="black" transparent opacity={0.85} />
+      </mesh>
+      <mesh position-z={3}>
+        <boxGeometry args={[0.05, 0.05, 0.05]} />
+        <meshBasicMaterial color="black" transparent opacity={0.8} />
+      </mesh>
+
+      <mesh position-z={4.5}>
+        <boxGeometry args={[0.05, 0.05, 0.05]} />
+        <meshBasicMaterial color="black" opacity={0.7} transparent />
+      </mesh>
+
+      <mesh position-z={6.5}>
+        <boxGeometry args={[0.05, 0.05, 0.05]} />
+        <meshBasicMaterial color="black" opacity={0.6} transparent />
+      </mesh>
+
+      <mesh position-z={9}>
+        <boxGeometry args={[0.05, 0.05, 0.05]} />
+        <meshBasicMaterial color="black" opacity={0.2} transparent />
+      </mesh>
+    </group>
+  );
+};
+
+const PlayerInfo: React.FC<{ state: any }> = ({ state }) => {
+  const health = state.health;
+  const name = state.profile.name;
+
+  return (
+    <Billboard position-y={2.5}>
+      <Text position-y={0.36} fontSize={0.4}>
+        {name}
+        <meshBasicMaterial color={state.profile.color} />
+      </Text>
+
+      <mesh position-z={-0.1}>
+        <planeGeometry args={[1, 0.2]} />
+        <meshBasicMaterial color="black" transparent opacity={0.5} />
+      </mesh>
+      <mesh scale-x={health / 100} position-x={-0.5 * (1 - health / 100)}>
+        <planeGeometry args={[1, 0.2]} />
+        <meshBasicMaterial color="red" />
+      </mesh>
+    </Billboard>
   );
 };
 

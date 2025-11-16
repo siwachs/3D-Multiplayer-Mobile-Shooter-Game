@@ -1,18 +1,47 @@
 import { useEffect, useState } from "react";
 import { Environment } from "@react-three/drei";
-import { insertCoin, Joystick, myPlayer, onPlayerJoin } from "playroomkit";
+import {
+  insertCoin,
+  isHost,
+  Joystick,
+  myPlayer,
+  onPlayerJoin,
+  useMultiplayerState,
+} from "playroomkit";
 
-import BattleGround from "./BattleGround";
+import { BattleGround } from "./environment";
+import { Bullet } from "./Weapons";
 import CharacterController from "./CharacterController";
+import { BulletHit } from "./BulletHit";
 
-import type { Player } from "../types";
+import type { Player, Position } from "../types";
 
 export const Experience = () => {
   const [players, setPlayers] = useState<Player[]>([]);
 
+  const [bullets, setBullets] = useState<Record<string, any>[]>([]);
+  const [networkBullets, setNetworkBullets] = useMultiplayerState<
+    Record<string, any>[]
+  >("bullets", []);
+
+  const [hits, setHits] = useState<Record<string, any>[]>([]);
+  const [networkHits, setNetworkHits] = useMultiplayerState<
+    Record<string, any>[]
+  >("hits", []);
+
+  useEffect(() => {
+    setNetworkBullets(bullets);
+  }, [bullets]);
+
+  useEffect(() => {
+    setNetworkHits(hits);
+  }, [hits]);
+
   const start = async () => {
     await insertCoin();
   };
+
+  console.log(networkBullets);
 
   useEffect(() => {
     start();
@@ -36,7 +65,30 @@ export const Experience = () => {
     };
 
     onPlayerJoin((state) => setUpPlayer(state));
+
+    return () => {
+      setPlayers([]);
+    };
   }, []);
+
+  const onFire = (bullet: Record<string, any>) => {
+    setBullets((bullets) => [...bullets, bullet]);
+  };
+
+  const onKilled = (_victim: number, killer: number) => {
+    const killerState = players.find((p) => p.state.id === killer)?.state;
+    killerState.setState("kills", killerState.scale.kills + 1);
+  };
+
+  const onHit = (bulletId: string, position?: Position) => {
+    setBullets((bullets) => bullets.filter((bullet) => bullet.id !== bulletId));
+    console.log("on hit");
+    setHits((hits) => [...hits, { id: bulletId, position }]);
+  };
+
+  const onHitEnded = (hitId: string) => {
+    setHits((hits) => hits.filter((h) => h.id !== hitId));
+  };
 
   return (
     <>
@@ -55,15 +107,34 @@ export const Experience = () => {
         shadow-bias={-0.0001}
       />
       <BattleGround />
-      {players.map(({ state, joystick }, idx) => (
+      {players.map(({ state, joystick }) => (
         <CharacterController
           key={state.id}
-          position-x={idx * 2}
           state={state}
           joystick={joystick}
           userPlayer={state.id === myPlayer()?.id}
+          onFire={onFire}
+          onKilled={onKilled}
         />
       ))}
+
+      {(isHost() ? bullets : networkBullets).map((bullet) => (
+        <Bullet
+          key={bullet.id}
+          player={bullet.player}
+          angle={bullet.angle}
+          position={bullet.position}
+          onHit={(position) => onHit(bullet.id, position)}
+        />
+      ))}
+      {(isHost() ? hits : networkHits).map((hit) => (
+        <BulletHit
+          key={hit.id}
+          position={hit.position}
+          onEnded={() => onHitEnded(hit.id)}
+        />
+      ))}
+
       <Environment preset="sunset" />
     </>
   );

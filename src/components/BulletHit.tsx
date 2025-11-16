@@ -1,0 +1,70 @@
+import { useEffect, useMemo, useRef } from "react";
+import { Color, MathUtils, Vector3, type InstancedMesh } from "three";
+import { Instance, Instances } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import { isHost } from "playroomkit";
+
+import type { Position } from "../types";
+
+const bulletHitcolor = new Color("red");
+bulletHitcolor.multiplyScalar(12);
+
+const AnimatedBox: React.FC<{
+  scale: number;
+  target: Vector3;
+  speed: number;
+}> = ({ scale, target, speed }) => {
+  const ref = useRef<InstancedMesh>(null!);
+
+  useFrame((_, delta) => {
+    if (ref.current.scale.x > 0) {
+      ref.current.scale.x =
+        ref.current.scale.y =
+        ref.current.scale.z -=
+          speed * delta;
+    }
+    ref.current.position.lerp(target, speed);
+  });
+
+  return <Instance ref={ref} scale={scale} position={[0, 0, 0]} />;
+};
+
+export const BulletHit: React.FC<{
+  nb?: number;
+  position: Position;
+  onEnded: () => void;
+}> = ({ nb = 100, position, onEnded }) => {
+  const boxes = useMemo(
+    () =>
+      Array.from({ length: nb }, () => ({
+        target: new Vector3(
+          MathUtils.randFloat(-0.6, 0.6),
+          MathUtils.randFloat(-0.6, 0.6),
+          MathUtils.randFloat(-0.6, 0.6)
+        ),
+        scale: 0.1,
+        speed: MathUtils.randFloat(0.1, 0.3),
+      })),
+    [nb]
+  );
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (isHost()) {
+        onEnded();
+      }
+    }, 500);
+  }, []);
+
+  return (
+    <group position={[position.x, position.y, position.z]}>
+      <Instances>
+        <boxGeometry />
+        <meshStandardMaterial toneMapped={false} color={bulletHitcolor} />
+        {boxes.map((box, i) => (
+          <AnimatedBox key={i} {...box} />
+        ))}
+      </Instances>
+    </group>
+  );
+};
