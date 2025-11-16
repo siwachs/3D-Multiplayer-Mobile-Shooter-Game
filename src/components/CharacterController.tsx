@@ -191,8 +191,13 @@ const CharacterController: React.FC<ControllerProps> = ({
         onIntersectionEnter={(e) => {
           // On Collide Handler
           const other = e.other.rigidBodyObject?.userData as BodyUserData;
+          console.log("other is", other);
 
           if (isHost() && other.type === "bullet" && state.state.health > 0) {
+            if (other.player === state.id) {
+              return;
+            }
+
             const newHealth = state.state.health - other.damage;
             if (newHealth <= 0) {
               setState("deaths", state.state.deaths + 1);
@@ -207,7 +212,7 @@ const CharacterController: React.FC<ControllerProps> = ({
                 setState("dead", false);
               }, 2000);
 
-              onKilled(state.id, other.userData.player);
+              onKilled(state.id, other.player);
             } else {
               setState("health", newHealth);
             }
