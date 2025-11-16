@@ -190,7 +190,7 @@ const CharacterController: React.FC<ControllerProps> = ({
         type={isHost() ? "dynamic" : "kinematicPosition"} // Physics simulation is not deterministic across clients — each device runs its own version of the world
         onIntersectionEnter={(e) => {
           // On Collide Handler
-          const other = e.other.rigidBody?.userData as BodyUserData;
+          const other = e.other.rigidBodyObject?.userData as BodyUserData;
 
           if (isHost() && other.type === "bullet" && state.state.health > 0) {
             const newHealth = state.state.health - other.damage;

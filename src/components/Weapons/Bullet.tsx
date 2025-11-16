@@ -49,7 +49,7 @@ const Bullet: React.FC<{
           sensor // Notify when it collide
           onIntersectionEnter={(e) => {
             // On Collide Handler
-            const other = e.other.rigidBody?.userData as BodyUserData;
+            const other = e.other.rigidBodyObject?.userData as BodyUserData;
 
             if (isHost() && other.type !== "bullet") {
               rigidBodyRef.current.setEnabled(false);
