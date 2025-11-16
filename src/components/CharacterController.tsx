@@ -59,6 +59,9 @@ const CharacterController: React.FC<ControllerProps> = ({
   const controlsRef = useRef<CameraControlsType>(null!);
   const lastShootRef = useRef(0);
 
+  // Keyboard state (only used for userPlayer)
+  const keysRef = useRef<Set<string>>(new Set());
+
   const scene = useThree((state) => state.scene);
   const spawnRandomly = () => {
     const spawns = [];
@@ -81,6 +84,40 @@ const CharacterController: React.FC<ControllerProps> = ({
     }
   }, []);
 
+  // Keyboard event handlers (only for user player)
+  useEffect(() => {
+    if (!userPlayer) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+
+      // Only handle game keys
+      if (
+        key === "w" ||
+        key === "a" ||
+        key === "s" ||
+        key === "d" ||
+        key === " "
+      ) {
+        e.preventDefault();
+        keysRef.current.add(key);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      keysRef.current.delete(key);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [userPlayer]);
+
   useEffect(() => {
     if (state.state.dead) {
       const audio = new Audio("/audios/dead.mp3");
@@ -96,6 +133,33 @@ const CharacterController: React.FC<ControllerProps> = ({
       audio.play();
     }
   }, [state.state.health]);
+
+  // Calculate movement from keyboard input
+  const getKeyboardMovement = () => {
+    const keys = keysRef.current;
+    let moveX = 0;
+    let moveZ = 0;
+
+    // WASD keys
+    if (keys.has("w")) moveZ -= 1;
+    if (keys.has("s")) moveZ += 1;
+    if (keys.has("a")) moveX -= 1;
+    if (keys.has("d")) moveX += 1;
+
+    // Normalize diagonal movement
+    if (moveX !== 0 && moveZ !== 0) {
+      moveX *= 0.707; // 1/sqrt(2) for diagonal normalization
+      moveZ *= 0.707;
+    }
+
+    if (moveX === 0 && moveZ === 0) {
+      return { angle: null, isMoving: false };
+    }
+
+    // Calculate angle from movement direction
+    const angle = Math.atan2(moveX, moveZ);
+    return { angle, isMoving: true };
+  };
 
   useFrame((_, delta) => {
     // Camera Follow Character
@@ -121,10 +185,38 @@ const CharacterController: React.FC<ControllerProps> = ({
       return;
     }
 
-    // Update player position based on joystick state
-    const angle = joystick.angle();
-    if (joystick.isJoystickPressed() && angle) {
-      setAnimation("Run");
+    // Determine input source: keyboard (if keys pressed) or joystick (fallback)
+    let angle: number | null = null;
+    let isMoving = false;
+    let isFiring = false;
+
+    // Check keyboard input first (only for userPlayer)
+    if (userPlayer) {
+      const keyboardMovement = getKeyboardMovement();
+      const hasKeyboardMovement = keyboardMovement.isMoving;
+      const hasKeyboardFire = keysRef.current.has(" ");
+
+      if (hasKeyboardMovement || hasKeyboardFire) {
+        // Use keyboard input
+        angle = keyboardMovement.angle;
+        isMoving = keyboardMovement.isMoving;
+        isFiring = hasKeyboardFire;
+      } else {
+        // Fall back to joystick
+        angle = joystick.angle();
+        isMoving = joystick.isJoystickPressed() && angle !== null;
+        isFiring = joystick.isPressed("fire");
+      }
+    } else {
+      // For other players, use joystick (from their device)
+      angle = joystick.angle();
+      isMoving = joystick.isJoystickPressed() && angle !== null;
+      isFiring = joystick.isPressed("fire");
+    }
+
+    // Handle movement
+    if (isMoving && angle !== null) {
+      setAnimation(isFiring ? "Run_Shoot" : "Run");
       character.current.rotation.y = angle;
 
       // Move character in its own direction
@@ -136,23 +228,23 @@ const CharacterController: React.FC<ControllerProps> = ({
 
       rigidBodyRef.current?.applyImpulse(impulse, true);
     } else {
-      setAnimation("Idle");
+      setAnimation(isFiring ? "Idle_Shoot" : "Idle");
     }
 
     // Fire Func.
-    if (joystick.isPressed("fire")) {
-      setAnimation(
-        joystick.isJoystickPressed() && angle ? "Run_Shoot" : "Idle_Shoot"
-      );
-
+    if (isFiring) {
       if (isHost()) {
         if (Date.now() - lastShootRef.current > FIRE_RATE) {
           lastShootRef.current = Date.now();
 
+          // Use current angle or character rotation for bullet direction
+          const bulletAngle =
+            angle !== null ? angle : character.current.rotation.y;
+
           const newBullet = {
             id: `${state.id}-${uuidv4()}`,
             position: vec3(rigidBodyRef.current?.translation()),
-            angle,
+            angle: bulletAngle,
             player: state.id,
           };
 

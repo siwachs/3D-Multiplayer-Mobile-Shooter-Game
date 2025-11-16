@@ -79,14 +79,15 @@ export const Experience: React.FC<{
   const onHit = (bulletId: string, position?: Position) => {
     setBullets((bullets) => {
       // Double-check the bullet still exists before removing
-      if (bullets.some(b => b.id === bulletId)) {
+      if (bullets.some((b) => b.id === bulletId)) {
         return bullets.filter((bullet) => bullet.id !== bulletId);
       }
       return bullets;
     });
+
     setHits((hits) => {
       // Prevent duplicate hits
-      if (!hits.some(h => h.id === bulletId)) {
+      if (!hits.some((h) => h.id === bulletId)) {
         return [...hits, { id: bulletId, position }];
       }
       return hits;
